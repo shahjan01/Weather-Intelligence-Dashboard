@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skylign · Weather Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <!-- Live sky backdrop: tint + drifting layers driven by current conditions -->
+  <div class="sky" id="sky" aria-hidden="true">
+    <div class="sky__glow" id="skyGlow"></div>
+    <div class="sky__layer sky__layer--a"></div>
+    <div class="sky__layer sky__layer--b"></div>
+  </div>
+
+  <!-- ============ TOP NAVBAR ============ -->
+  <header class="nav glass">
+    <div class="nav__brand">
+      <span class="nav__mark" aria-hidden="true"></span>
+      <div>
+        <span class="nav__name">Skylign</span>
+        <span class="nav__tag">weather intelligence</span>
+      </div>
+    </div>
+
+    <div class="search" id="searchWrap">
+      <svg class="search__icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M21 20l-5.6-5.6A7 7 0 1 0 14 16l5.6 5.6L21 20zM5 10a5 5 0 1 1 10 0A5 5 0 0 1 5 10z"/></svg>
+      <input
+        id="searchInput"
+        class="search__input"
+        type="text"
+        placeholder="Search any city…"
+        autocomplete="off"
+        aria-label="Search for a city"
+      />
+      <ul class="search__results" id="searchResults" role="listbox"></ul>
+    </div>
+
+    <div class="nav__actions">
+      <button class="iconbtn" id="locateBtn" title="Use my location" aria-label="Use my location">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 3h-2.06A7 7 0 0 0 13 5.06V3h-2v2.06A7 7 0 0 0 5.06 11H3v2h2.06A7 7 0 0 0 11 18.94V21h2v-2.06A7 7 0 0 0 18.94 13H21v-2zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/></svg>
+      </button>
+
+      <button class="iconbtn iconbtn--bell" id="bellBtn" title="Notifications" aria-label="Open notifications">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-5l-1.5-1.5V11a5.5 5.5 0 0 0-4-5.3V5a1.5 1.5 0 0 0-3 0v.7A5.5 5.5 0 0 0 6.5 11v4.5L5 17v1h14v-1z"/></svg>
+        <span class="badge" id="bellBadge" hidden>0</span>
+      </button>
+
+      <button class="iconbtn" id="themeBtn" title="Toggle theme" aria-label="Toggle light or dark theme">
+        <svg class="ico-moon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+        <svg class="ico-sun" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-13V1h0zm0 22v-3M4 12H1m22 0h-3M5.6 5.6 3.5 3.5m17 17-2.1-2.1M18.4 5.6l2.1-2.1M3.5 20.5l2.1-2.1"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ NOTIFICATION CENTER (slide-out) ============ -->
+  <aside class="notifs glass" id="notifPanel" aria-hidden="true">
+    <div class="notifs__head">
+      <h2>Notifications</h2>
+      <div class="notifs__head-actions">
+        <button class="textbtn" id="markReadBtn">Mark all read</button>
+        <button class="iconbtn" id="notifClose" aria-label="Close notifications">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3L16.9 4.3z"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="notifs__list" id="notifList"></div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ============ MAIN DASHBOARD ============ -->
+  <main class="board" id="board">
+
+    <!-- Global status / errors -->
+    <div class="statusbar" id="statusBar" hidden></div>
+
+    <section class="grid-top">
+      <!-- HERO -->
+      <article class="hero glass" id="heroCard">
+        <div class="hero__top">
+          <div>
+            <p class="hero__place" id="heroPlace">—</p>
+            <p class="hero__updated" id="heroUpdated">Locating…</p>
+          </div>
+          <button class="favbtn" id="favToggle" title="Save to favorites" aria-label="Save city to favorites">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="m12 17.3 6.18 3.7-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </button>
+        </div>
+
+        <div class="hero__main">
+          <div class="hero__icon" id="heroIcon"></div>
+          <div class="hero__readout">
+            <p class="hero__temp"><span id="heroTemp">--</span><span class="deg">°</span></p>
+            <p class="hero__cond" id="heroCond">—</p>
+            <p class="hero__feels">Feels like <strong id="heroFeels">--°</strong></p>
+          </div>
+        </div>
+
+        <div class="hero__foot">
+          <span class="hero__hl"><i class="up"></i> High <strong id="heroHigh">--°</strong></span>
+          <span class="hero__hl"><i class="down"></i> Low <strong id="heroLow">--°</strong></span>
+          <span class="hero__hl"><i class="rain"></i> Rain <strong id="heroRain">--%</strong></span>
+        </div>
+      </article>
+
+      <!-- ASSISTANT (rule-based, labelled honestly) -->
+      <article class="assistant glass" id="assistantCard">
+        <header class="assistant__head">
+          <span class="assistant__pulse" aria-hidden="true"></span>
+          <h2>Smart assistant</h2>
+          <span class="assistant__sub">rule-based tips</span>
+        </header>
+        <ul class="assistant__list" id="assistantList">
+          <li class="assistant__empty">Waiting for weather data…</li>
+        </ul>
+      </article>
+    </section>
+
+    <!-- STATS GRID -->
+    <section class="stats" id="statsGrid" aria-label="Current conditions"></section>
+
+    <!-- HOURLY -->
+    <section class="panel glass">
+      <header class="panel__head">
+        <h2>Next 24 hours</h2>
+        <span class="panel__hint">scroll →</span>
+      </header>
+      <div class="hourly" id="hourly"></div>
+    </section>
+
+    <!-- 7-DAY -->
+    <section class="panel glass">
+      <header class="panel__head"><h2>7-day forecast</h2></header>
+      <div class="week" id="week"></div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="charts">
+      <article class="panel glass chart-card">
+        <header class="panel__head"><h2>Temperature trend</h2><span class="panel__hint">next 24h, °C</span></header>
+        <div class="chart-box" style="position:relative;height:220px;width:100%"><canvas id="chartTemp"></canvas></div>
+      </article>
+      <article class="panel glass chart-card">
+        <header class="panel__head"><h2>Rain probability</h2><span class="panel__hint">next 24h, %</span></header>
+        <div class="chart-box" style="position:relative;height:220px;width:100%"><canvas id="chartRain"></canvas></div>
+      </article>
+      <article class="panel glass chart-card">
+        <header class="panel__head"><h2>Humidity trend</h2><span class="panel__hint">next 24h, %</span></header>
+        <div class="chart-box" style="position:relative;height:220px;width:100%"><canvas id="chartHumid"></canvas></div>
+      </article>
+      <article class="panel glass chart-card">
+        <header class="panel__head"><h2>7-day high vs low</h2><span class="panel__hint">°C</span></header>
+        <div class="chart-box" style="position:relative;height:220px;width:100%"><canvas id="chartWeek"></canvas></div>
+      </article>
+    </section>
+
+    <!-- FAVORITES -->
+    <section class="panel glass">
+      <header class="panel__head"><h2>Saved cities</h2></header>
+      <div class="favs" id="favs"><p class="favs__empty">No saved cities yet. Tap the ★ on the hero card.</p></div>
+    </section>
+
+    <footer class="foot">
+      <span>Data: WeatherAPI.com</span>
+      <span id="footClock">—</span>
+    </footer>
+  </main>
+
+  <!-- full-screen loader -->
+  <div class="loader" id="loader"><div class="loader__ring"></div><p>Reading the sky…</p></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
