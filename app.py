@@ -23,7 +23,7 @@ load_dotenv()
 
 app = Flask(__name__)
 
-WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "94627308cb204b05ba2110448261306").strip()
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "your_api_key_past_here").strip()
 WEATHER_BASE = "https://api.weatherapi.com/v1"
 REQUEST_TIMEOUT = 12  # seconds
 
